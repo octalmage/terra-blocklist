@@ -15,6 +15,9 @@ pub enum ContractError {
     #[error("Address is on the blocklist")]
     Blocked {},
 
+    #[error("Address is not on the blocklist")]
+    NotBlocked {},
+
     #[error("Invalid zero amount")]
     InvalidZeroAmount {},
 

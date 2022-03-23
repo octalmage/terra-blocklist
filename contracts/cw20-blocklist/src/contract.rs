@@ -1,18 +1,18 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    attr, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 
 use cw2::set_contract_version;
 use cw20_base::allowances::{
-    execute_burn_from, execute_decrease_allowance, execute_increase_allowance, execute_send_from,
+    execute_decrease_allowance, execute_increase_allowance, execute_send_from,
     execute_transfer_from, query_allowance,
 };
 use cw20_base::contract::{
     execute_burn, execute_mint, execute_send, execute_transfer, query_balance, query_token_info,
 };
-use cw20_base::state::{MinterData, TokenInfo, TOKEN_INFO};
+use cw20_base::state::{MinterData, TokenInfo, BALANCES, TOKEN_INFO};
 
 use crate::error::ContractError;
 use crate::msg::{BlockedResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -71,7 +71,7 @@ pub fn execute(
             }
             Ok(execute_transfer(deps, env, info, recipient, amount)?)
         }
-        ExecuteMsg::Burn { amount } => {
+        ExecuteMsg::Redeem { amount } => {
             let config = TOKEN_INFO.load(deps.storage)?;
             if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
                 return Err(ContractError::Unauthorized {});
@@ -115,12 +115,17 @@ pub fn execute(
                 deps, env, info, owner, recipient, amount,
             )?)
         }
-        ExecuteMsg::BurnFrom { owner, amount } => {
+        ExecuteMsg::DestroyBlockedFunds { address } => {
             let config = TOKEN_INFO.load(deps.storage)?;
             if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
                 return Err(ContractError::Unauthorized {});
             }
-            Ok(execute_burn_from(deps, env, info, owner, amount)?)
+
+            if !is_blocked(deps.as_ref(), address.to_string()).unwrap_or_default() {
+                return Err(ContractError::NotBlocked {});
+            }
+
+            Ok(destroy_blocked_funds(deps, info, address)?)
         }
         ExecuteMsg::SendFrom {
             owner,
@@ -138,6 +143,43 @@ pub fn execute(
     }
 }
 
+pub fn destroy_blocked_funds(
+    deps: DepsMut,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let address_to_check = deps.api.addr_validate(&address)?;
+
+    let amount = BALANCES
+        .may_load(deps.storage, &address_to_check)
+        .unwrap_or_default();
+
+    // lower balance
+    BALANCES.update(
+        deps.storage,
+        &address_to_check,
+        |balance: Option<Uint128>| -> StdResult<_> {
+            Ok(balance
+                .unwrap_or_default()
+                .checked_sub(amount.unwrap_or_default())?)
+        },
+    )?;
+
+    // reduce total_supply
+    TOKEN_INFO.update(deps.storage, |mut meta| -> StdResult<_> {
+        meta.total_supply = meta.total_supply.checked_sub(amount.unwrap_or_default())?;
+        Ok(meta)
+    })?;
+
+    let res = Response::new().add_attributes(vec![
+        attr("action", "destroy_blocked_funds"),
+        attr("from", address_to_check),
+        attr("by", info.sender),
+        attr("amount", amount.unwrap_or_default()),
+    ]);
+    Ok(res)
+}
+
 pub fn try_add_to_blocklist(
     deps: DepsMut,
     info: MessageInfo,
@@ -148,10 +190,7 @@ pub fn try_add_to_blocklist(
         return Err(ContractError::Unauthorized {});
     }
 
-    let address_to_block = deps
-        .api
-        .addr_humanize(&deps.api.addr_canonicalize(&address).unwrap())
-        .unwrap();
+    let address_to_block = deps.api.addr_validate(&address)?;
 
     BLOCKED.save(deps.storage, &address_to_block, &true)?;
 
@@ -167,11 +206,7 @@ pub fn try_remove_from_blocklist(
     if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-
-    let address_to_unblock = deps
-        .api
-        .addr_humanize(&deps.api.addr_canonicalize(&address).unwrap())
-        .unwrap();
+    let address_to_unblock = deps.api.addr_validate(&address)?;
 
     BLOCKED.save(deps.storage, &address_to_unblock, &false)?;
 
@@ -192,14 +227,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn is_blocked(deps: Deps, address: String) -> Option<bool> {
-    let address_to_check = deps
-        .api
-        .addr_humanize(&deps.api.addr_canonicalize(&address).unwrap())
-        .unwrap();
-
-    return BLOCKED
-        .may_load(deps.storage, &address_to_check)
-        .unwrap_or_default();
+    return match deps.api.addr_validate(&address) {
+        Err(_) => Some(false),
+        Ok(addr) => BLOCKED.may_load(deps.storage, &addr).unwrap_or_default(),
+    };
 }
 fn query_blocked(deps: Deps, address: String) -> StdResult<BlockedResponse> {
     Ok(BlockedResponse {
@@ -343,6 +374,60 @@ mod tests {
                 get_balance(deps.as_ref(), "addr0001"),
                 Uint128::new(1000000)
             );
+        }
+
+        #[test]
+        fn destroy_blocked_funds() {
+            let mut deps = mock_dependencies(&[]);
+            let amount = Uint128::from(11223344u128);
+            do_instantiate(deps.as_mut());
+
+            // Mint to addr0000 from creator.
+            let msg = ExecuteMsg::Mint {
+                recipient: "addr0000".into(),
+                amount: amount,
+            };
+            let info = mock_info("creator", &[]);
+            let env = mock_env();
+
+            let res = execute(deps.as_mut(), env, info, msg).unwrap();
+            assert_eq!(0, res.messages.len());
+
+            // Attempt destroy
+            let msg = ExecuteMsg::DestroyBlockedFunds {
+                address: "addr0000".into(),
+            };
+
+            let info = mock_info("creator", &[]);
+            let env = mock_env();
+
+            // ensure you can't burn destroy that aren't blocked.
+            let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+            assert_eq!(err, ContractError::NotBlocked {});
+
+            // Block addr0000 from creator.
+            let msg = ExecuteMsg::AddToBlockedList {
+                address: "addr0000".into(),
+            };
+
+            let info = mock_info("creator", &[]);
+            let env = mock_env();
+
+            let res = execute(deps.as_mut(), env, info, msg).unwrap();
+            assert_eq!(0, res.messages.len());
+
+            // Destroy blocked funds.
+            let msg = ExecuteMsg::DestroyBlockedFunds {
+                address: "addr0000".into(),
+            };
+
+            let info = mock_info("creator", &[]);
+            let env = mock_env();
+
+            let res = execute(deps.as_mut(), env, info, msg).unwrap();
+            assert_eq!(0, res.messages.len());
+
+            assert_eq!(get_balance(deps.as_ref(), "addr0000"), Uint128::zero());
         }
 
         #[test]

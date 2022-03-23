@@ -3,7 +3,7 @@
     "_base": {
       "store": {
         "fee": {
-          "gasLimit": 2000000,
+          "gasLimit": 5000000,
           "amount": {
             "uluna": 1000000
           }
