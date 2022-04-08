@@ -21,6 +21,7 @@ pub enum ExecuteMsg {
     RemoveFromBlockedList { address: String },
     Mint { recipient: String, amount: Uint128 },
     DestroyBlockedFunds { address: String },
+    UpdateMinter { address: String },
 
     /// Implements CW20. Transfer is a base message to move tokens to another account without triggering actions
     Transfer { recipient: String, amount: Uint128 },

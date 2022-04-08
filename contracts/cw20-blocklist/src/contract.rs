@@ -59,6 +59,9 @@ pub fn execute(
         ExecuteMsg::RemoveFromBlockedList { address } => {
             Ok(try_remove_from_blocklist(deps, info, address)?)
         }
+        ExecuteMsg::UpdateMinter { address } => {
+            Ok(update_minter(deps, info, address)?)
+        }
 
         ExecuteMsg::Mint { recipient, amount } => {
             Ok(execute_mint(deps, env, info, recipient, amount)?)
@@ -69,6 +72,7 @@ pub fn execute(
             if is_blocked(deps.as_ref(), info.sender.to_string()).unwrap_or_default() {
                 return Err(ContractError::Blocked {});
             }
+
             Ok(execute_transfer(deps, env, info, recipient, amount)?)
         }
         ExecuteMsg::Redeem { amount } => {
@@ -148,6 +152,7 @@ pub fn destroy_blocked_funds(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
+    // TODO: Need to canonicalize. 
     let address_to_check = deps.api.addr_validate(&address)?;
 
     let amount = BALANCES
@@ -190,6 +195,7 @@ pub fn try_add_to_blocklist(
         return Err(ContractError::Unauthorized {});
     }
 
+    // TODO: Need to canonicalize. 
     let address_to_block = deps.api.addr_validate(&address)?;
 
     BLOCKED.save(deps.storage, &address_to_block, &true)?;
@@ -206,11 +212,36 @@ pub fn try_remove_from_blocklist(
     if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
         return Err(ContractError::Unauthorized {});
     }
+    // TODO: Need to canonicalize. 
     let address_to_unblock = deps.api.addr_validate(&address)?;
 
     BLOCKED.save(deps.storage, &address_to_unblock, &false)?;
 
     Ok(Response::new().add_attribute("blocked", "false"))
+}
+
+pub fn update_minter(
+    deps: DepsMut,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = TOKEN_INFO.load(deps.storage)?;
+    // TODO: Don't use unwrap.
+    if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // TODO: Need to canonicalize. 
+    let new_minter = deps.api.addr_validate(&address)?;
+
+    TOKEN_INFO.update(deps.storage, |mut state| -> Result<_, ContractError> {
+        state.mint = Some(MinterData {
+            minter: new_minter,
+            cap: None,
+        });
+        Ok(state)
+    })?;
+    Ok(Response::new().add_attribute("method", "update_minter"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -227,6 +258,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn is_blocked(deps: Deps, address: String) -> Option<bool> {
+    // TODO: Need to canonicalize. 
     return match deps.api.addr_validate(&address) {
         Err(_) => Some(false),
         Ok(addr) => BLOCKED.may_load(deps.storage, &addr).unwrap_or_default(),

@@ -67,6 +67,46 @@
       "additionalProperties": false
     },
     {
+      "type": "object",
+      "required": [
+        "destroy_blocked_funds"
+      ],
+      "properties": {
+        "destroy_blocked_funds": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_minter"
+      ],
+      "properties": {
+        "update_minter": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Implements CW20. Transfer is a base message to move tokens to another account without triggering actions",
       "type": "object",
       "required": [
@@ -92,13 +132,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Implements CW20. Burn is a base message to destroy tokens forever",
+      "description": "Redeem is a message to destroy tokens forever",
       "type": "object",
       "required": [
-        "burn"
+        "redeem"
       ],
       "properties": {
-        "burn": {
+        "redeem": {
           "type": "object",
           "required": [
             "amount"
@@ -264,31 +304,6 @@
             },
             "msg": {
               "$ref": "#/definitions/Binary"
-            },
-            "owner": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Implements CW20 \"approval\" extension. Destroys tokens forever",
-      "type": "object",
-      "required": [
-        "burn_from"
-      ],
-      "properties": {
-        "burn_from": {
-          "type": "object",
-          "required": [
-            "amount",
-            "owner"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
             },
             "owner": {
               "type": "string"
