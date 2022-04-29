@@ -152,7 +152,6 @@ pub fn destroy_blocked_funds(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
-    // TODO: Need to canonicalize. 
     let address_to_check = deps.api.addr_validate(&address)?;
 
     let amount = BALANCES
@@ -194,8 +193,7 @@ pub fn try_add_to_blocklist(
     if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-
-    // TODO: Need to canonicalize. 
+    
     let address_to_block = deps.api.addr_validate(&address)?;
 
     BLOCKED.save(deps.storage, &address_to_block, &true)?;
@@ -212,7 +210,6 @@ pub fn try_remove_from_blocklist(
     if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    // TODO: Need to canonicalize. 
     let address_to_unblock = deps.api.addr_validate(&address)?;
 
     BLOCKED.save(deps.storage, &address_to_unblock, &false)?;
@@ -226,12 +223,10 @@ pub fn update_minter(
     address: String,
 ) -> Result<Response, ContractError> {
     let config = TOKEN_INFO.load(deps.storage)?;
-    // TODO: Don't use unwrap.
     if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
-    // TODO: Need to canonicalize. 
     let new_minter = deps.api.addr_validate(&address)?;
 
     TOKEN_INFO.update(deps.storage, |mut state| -> Result<_, ContractError> {
@@ -258,7 +253,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn is_blocked(deps: Deps, address: String) -> Option<bool> {
-    // TODO: Need to canonicalize. 
     return match deps.api.addr_validate(&address) {
         Err(_) => Some(false),
         Ok(addr) => BLOCKED.may_load(deps.storage, &addr).unwrap_or_default(),
