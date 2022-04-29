@@ -152,7 +152,7 @@ pub fn destroy_blocked_funds(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
-    let address_to_check = deps.api.addr_validate(&address)?;
+    let address_to_check = deps.api.addr_validate(&address.to_lowercase())?;
 
     let amount = BALANCES
         .may_load(deps.storage, &address_to_check)
@@ -194,7 +194,7 @@ pub fn try_add_to_blocklist(
         return Err(ContractError::Unauthorized {});
     }
     
-    let address_to_block = deps.api.addr_validate(&address)?;
+    let address_to_block = deps.api.addr_validate(&address.to_lowercase())?;
 
     BLOCKED.save(deps.storage, &address_to_block, &true)?;
 
@@ -210,7 +210,7 @@ pub fn try_remove_from_blocklist(
     if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    let address_to_unblock = deps.api.addr_validate(&address)?;
+    let address_to_unblock = deps.api.addr_validate(&address.to_lowercase())?;
 
     BLOCKED.save(deps.storage, &address_to_unblock, &false)?;
 
@@ -227,7 +227,7 @@ pub fn update_minter(
         return Err(ContractError::Unauthorized {});
     }
 
-    let new_minter = deps.api.addr_validate(&address)?;
+    let new_minter = deps.api.addr_validate(&address.to_lowercase())?;
 
     TOKEN_INFO.update(deps.storage, |mut state| -> Result<_, ContractError> {
         state.mint = Some(MinterData {
@@ -253,7 +253,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn is_blocked(deps: Deps, address: String) -> Option<bool> {
-    return match deps.api.addr_validate(&address) {
+    return match deps.api.addr_validate(&address.to_lowercase()) {
         Err(_) => Some(false),
         Ok(addr) => BLOCKED.may_load(deps.storage, &addr).unwrap_or_default(),
     };
