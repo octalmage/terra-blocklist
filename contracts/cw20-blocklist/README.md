@@ -28,3 +28,13 @@ UpdateMinter {
 `DestroyBlockedFunds` allows the owner of the contract to burn funds in any wallet currently on the blocklist.
 
 `UpdateMinter` allows the owner to update the address that is allowed to mint. Useful for migrations to a new multisig. 
+
+New query message added: 
+
+```
+IsBlocked {
+    address: String,
+},
+```
+
+`IsBlocked` can be used to see if an address is currently blocked. 
