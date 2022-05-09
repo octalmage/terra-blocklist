@@ -17,16 +17,32 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    AddToBlockedList { address: String },
-    RemoveFromBlockedList { address: String },
-    Mint { recipient: String, amount: Uint128 },
-    DestroyBlockedFunds { address: String },
-    UpdateMinter { address: String },
+    AddToBlockedList {
+        address: String,
+    },
+    RemoveFromBlockedList {
+        address: String,
+    },
+    Mint {
+        recipient: String,
+        amount: Uint128,
+    },
+    DestroyBlockedFunds {
+        address: String,
+    },
+    UpdateMinter {
+        address: String,
+    },
 
     /// Implements CW20. Transfer is a base message to move tokens to another account without triggering actions
-    Transfer { recipient: String, amount: Uint128 },
+    Transfer {
+        recipient: String,
+        amount: Uint128,
+    },
     /// Redeem is a message to destroy tokens forever
-    Redeem { amount: Uint128 },
+    Redeem {
+        amount: Uint128,
+    },
     /// Implements CW20.  Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
     Send {
@@ -75,15 +91,22 @@ pub struct BlockedResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    IsBlocked { address: String },
+    IsBlocked {
+        address: String,
+    },
 
     /// Implements CW20. Returns the current balance of the given address, 0 if unset.
-    Balance { address: String },
+    Balance {
+        address: String,
+    },
     /// Implements CW20. Returns metadata on the contract - name, decimals, supply, etc.
     TokenInfo {},
     /// Implements CW20 "allowance" extension.
     /// Returns how much spender can use from owner account, 0 if unset.
-    Allowance { owner: String, spender: String },
+    Allowance {
+        owner: String,
+        spender: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

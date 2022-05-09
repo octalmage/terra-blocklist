@@ -59,9 +59,7 @@ pub fn execute(
         ExecuteMsg::RemoveFromBlockedList { address } => {
             Ok(try_remove_from_blocklist(deps, info, address)?)
         }
-        ExecuteMsg::UpdateMinter { address } => {
-            Ok(update_minter(deps, info, address)?)
-        }
+        ExecuteMsg::UpdateMinter { address } => Ok(update_minter(deps, info, address)?),
 
         ExecuteMsg::Mint { recipient, amount } => {
             Ok(execute_mint(deps, env, info, recipient, amount)?)
@@ -193,7 +191,7 @@ pub fn try_add_to_blocklist(
     if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    
+
     let address_to_block = deps.api.addr_validate(&address.to_lowercase())?;
 
     BLOCKED.save(deps.storage, &address_to_block, &true)?;
