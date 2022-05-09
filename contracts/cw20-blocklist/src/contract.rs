@@ -38,7 +38,7 @@ pub fn instantiate(
         decimals: msg.decimals,
         total_supply: Uint128::zero(),
         mint: Some(MinterData {
-            minter: info.sender.clone(),
+            minter: info.sender,
             cap: None,
         }),
     };
@@ -251,10 +251,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn is_blocked(deps: Deps, address: String) -> Option<bool> {
-    return match deps.api.addr_validate(&address.to_lowercase()) {
+    match deps.api.addr_validate(&address.to_lowercase()) {
         Err(_) => Some(false),
         Ok(addr) => BLOCKED.may_load(deps.storage, &addr).unwrap_or_default(),
-    };
+    }
 }
 fn query_blocked(deps: Deps, address: String) -> StdResult<BlockedResponse> {
     Ok(BlockedResponse {
