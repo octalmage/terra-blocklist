@@ -58,15 +58,25 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    // Execute messages that require a minter.
     match msg {
-        ExecuteMsg::AddToBlockedList { address } => Ok(try_add_to_blocklist(deps, info, address)?),
-        ExecuteMsg::RemoveFromBlockedList { address } => {
-            Ok(try_remove_from_blocklist(deps, info, address)?)
+        ExecuteMsg::AddToBlockedList { .. }
+        | ExecuteMsg::RemoveFromBlockedList { .. }
+        | ExecuteMsg::UpdateMinter { .. }
+        | ExecuteMsg::Redeem { .. }
+        | ExecuteMsg::DestroyBlockedFunds { .. } => {
+            let config = TOKEN_INFO.load(deps.storage)?;
+            if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
+                return Err(ContractError::Unauthorized {});
+            }
         }
-        ExecuteMsg::UpdateMinter { address } => Ok(update_minter(deps, info, address)?),
+        _ => (),
+    };
 
-        ExecuteMsg::Mint { recipient, amount } => {
-            Ok(execute_mint(deps, env, info, recipient, amount)?)
+    match msg {
+        ExecuteMsg::AddToBlockedList { address } => Ok(try_add_to_blocklist(deps, address)?),
+        ExecuteMsg::RemoveFromBlockedList { address } => {
+            Ok(try_remove_from_blocklist(deps, address)?)
         }
         ExecuteMsg::UpdateMinter { address } => Ok(update_minter(deps, address)?),
         ExecuteMsg::Mint { recipient, amount } => Ok(execute_mint(
@@ -82,14 +92,6 @@ pub fn execute(
                 return Err(ContractError::Blocked {});
             }
 
-        }
-        ExecuteMsg::Redeem { amount } => {
-            let config = TOKEN_INFO.load(deps.storage)?;
-            if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
-                return Err(ContractError::Unauthorized {});
-            }
-
-            Ok(execute_burn(deps, env, info, amount)?)
             Ok(execute_transfer(
                 deps,
                 env,
@@ -98,6 +100,7 @@ pub fn execute(
                 amount,
             )?)
         }
+        ExecuteMsg::Redeem { amount } => Ok(execute_burn(deps, env, info, amount)?),
         ExecuteMsg::Send {
             contract,
             amount,
@@ -157,11 +160,6 @@ pub fn execute(
             )?)
         }
         ExecuteMsg::DestroyBlockedFunds { address } => {
-            let config = TOKEN_INFO.load(deps.storage)?;
-            if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
-                return Err(ContractError::Unauthorized {});
-            }
-
             if !is_blocked(deps.as_ref(), address.to_string()).unwrap_or_default() {
                 return Err(ContractError::NotBlocked {});
             }
@@ -229,14 +227,8 @@ pub fn destroy_blocked_funds(
 
 pub fn try_add_to_blocklist(
     deps: DepsMut,
-    info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
-    let config = TOKEN_INFO.load(deps.storage)?;
-    if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
     let address_to_block = deps.api.addr_validate(&address.to_lowercase())?;
 
     BLOCKED.save(deps.storage, &address_to_block, &true)?;
@@ -246,13 +238,8 @@ pub fn try_add_to_blocklist(
 
 pub fn try_remove_from_blocklist(
     deps: DepsMut,
-    info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
-    let config = TOKEN_INFO.load(deps.storage)?;
-    if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
     let address_to_unblock = deps.api.addr_validate(&address.to_lowercase())?;
 
     BLOCKED.save(deps.storage, &address_to_unblock, &false)?;
@@ -262,14 +249,8 @@ pub fn try_remove_from_blocklist(
 
 pub fn update_minter(
     deps: DepsMut,
-    info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
-    let config = TOKEN_INFO.load(deps.storage)?;
-    if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
     let new_minter = deps.api.addr_validate(&address.to_lowercase())?;
 
     TOKEN_INFO.update(deps.storage, |mut state| -> Result<_, ContractError> {
@@ -310,6 +291,7 @@ fn is_blocked(deps: Deps, address: String) -> Option<bool> {
         Ok(addr) => BLOCKED.may_load(deps.storage, &addr).unwrap_or_default(),
     }
 }
+
 fn query_blocked(deps: Deps, address: String) -> StdResult<BlockedResponse> {
     Ok(BlockedResponse {
         blocked: is_blocked(deps, address).unwrap_or_default(),
