@@ -73,7 +73,6 @@ pub enum ExecuteMsg {
     UpdateMinter {
         address: String,
     },
-
     /// Implements CW20. Transfer is a base message to move tokens to another account without triggering actions
     Transfer {
         recipient: String,
@@ -134,10 +133,14 @@ pub enum QueryMsg {
     IsBlocked {
         address: String,
     },
-
     /// Implements CW20. Returns the current balance of the given address, 0 if unset.
     Balance {
         address: String,
+    },
+    /// Implements CW20 "enumerable" extension. Returns the current balance of the given address, 0 if unset.
+    AllAccounts {
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
     /// Implements CW20. Returns metadata on the contract - name, decimals, supply, etc.
     TokenInfo {},
@@ -147,6 +150,16 @@ pub enum QueryMsg {
         owner: String,
         spender: String,
     },
+    /// Implements CW20 "enumerable" extension. 
+    /// Returns all allowances this owner has approved. Supports pagination.
+    AllAllowances {
+        owner: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Implements CW20 "mintable" extension. 
+    /// Returns who can mint and the hard cap on maximum tokens after minting.
+    Minter {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

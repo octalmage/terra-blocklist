@@ -10,8 +10,10 @@ use cw20_base::allowances::{
     execute_transfer_from, query_allowance,
 };
 use cw20_base::contract::{
-    execute_burn, execute_mint, execute_send, execute_transfer, query_balance, query_token_info,
+    execute_burn, execute_mint, execute_send, execute_transfer, query_balance, query_minter,
+    query_token_info,
 };
+use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw20_base::state::{MinterData, TokenInfo, BALANCES, TOKEN_INFO};
 
 use crate::error::ContractError;
@@ -246,9 +248,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         // inherited from cw20-base
         QueryMsg::TokenInfo {} => to_binary(&query_token_info(deps)?),
         QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
+        QueryMsg::AllAccounts { start_after, limit } => {
+            to_binary(&query_all_accounts(deps, start_after, limit)?)
+        }
         QueryMsg::Allowance { owner, spender } => {
             to_binary(&query_allowance(deps, owner, spender)?)
         }
+        QueryMsg::AllAllowances {
+            owner,
+            start_after,
+            limit,
+        } => to_binary(&query_all_allowances(deps, owner, start_after, limit)?),
+        QueryMsg::Minter {} => to_binary(&query_minter(deps)?),
     }
 }
 
