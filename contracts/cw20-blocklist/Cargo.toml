@@ -41,3 +41,9 @@ thiserror = { version = "1.0.23" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16.0" }
+
+[profile.dev]
+overflow-checks = true
+
+[profile.release]
+overflow-checks = true
