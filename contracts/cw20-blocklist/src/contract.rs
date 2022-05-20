@@ -30,6 +30,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    // check valid token info
+    msg.validate()?;
 
     // store token info using cw20-base format
     let data = TokenInfo {
