@@ -68,14 +68,20 @@ pub fn execute(
         ExecuteMsg::Mint { recipient, amount } => {
             Ok(execute_mint(deps, env, info, recipient, amount)?)
         }
-
+        ExecuteMsg::UpdateMinter { address } => Ok(update_minter(deps, address)?),
+        ExecuteMsg::Mint { recipient, amount } => Ok(execute_mint(
+            deps,
+            env,
+            info,
+            recipient.to_lowercase(),
+            amount,
+        )?),
         // these all come from cw20-base to implement the cw20 standard
         ExecuteMsg::Transfer { recipient, amount } => {
             if is_blocked(deps.as_ref(), info.sender.to_string()).unwrap_or_default() {
                 return Err(ContractError::Blocked {});
             }
 
-            Ok(execute_transfer(deps, env, info, recipient, amount)?)
         }
         ExecuteMsg::Redeem { amount } => {
             let config = TOKEN_INFO.load(deps.storage)?;
@@ -84,6 +90,13 @@ pub fn execute(
             }
 
             Ok(execute_burn(deps, env, info, amount)?)
+            Ok(execute_transfer(
+                deps,
+                env,
+                info,
+                recipient.to_lowercase(),
+                amount,
+            )?)
         }
         ExecuteMsg::Send {
             contract,
@@ -93,21 +106,38 @@ pub fn execute(
             if is_blocked(deps.as_ref(), info.sender.to_string()).unwrap_or_default() {
                 return Err(ContractError::Blocked {});
             }
-            Ok(execute_send(deps, env, info, contract, amount, msg)?)
+            Ok(execute_send(
+                deps,
+                env,
+                info,
+                contract.to_lowercase(),
+                amount,
+                msg,
+            )?)
         }
         ExecuteMsg::IncreaseAllowance {
             spender,
             amount,
             expires,
         } => Ok(execute_increase_allowance(
-            deps, env, info, spender, amount, expires,
+            deps,
+            env,
+            info,
+            spender.to_lowercase(),
+            amount,
+            expires,
         )?),
         ExecuteMsg::DecreaseAllowance {
             spender,
             amount,
             expires,
         } => Ok(execute_decrease_allowance(
-            deps, env, info, spender, amount, expires,
+            deps,
+            env,
+            info,
+            spender.to_lowercase(),
+            amount,
+            expires,
         )?),
         ExecuteMsg::TransferFrom {
             owner,
@@ -118,7 +148,12 @@ pub fn execute(
                 return Err(ContractError::Blocked {});
             }
             Ok(execute_transfer_from(
-                deps, env, info, owner, recipient, amount,
+                deps,
+                env,
+                info,
+                owner,
+                recipient.to_lowercase(),
+                amount,
             )?)
         }
         ExecuteMsg::DestroyBlockedFunds { address } => {
@@ -143,7 +178,13 @@ pub fn execute(
                 return Err(ContractError::Blocked {});
             }
             Ok(execute_send_from(
-                deps, env, info, owner, contract, amount, msg,
+                deps,
+                env,
+                info,
+                owner,
+                contract.to_lowercase(),
+                amount,
+                msg,
             )?)
         }
     }
