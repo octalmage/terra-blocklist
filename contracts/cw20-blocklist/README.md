@@ -1,6 +1,8 @@
 # CW20 Blocklist
 
-This is a sample contract that extends the cw20-base to add blocklist functionality. 
+This is a sample contract that extends the cw20-base to add blocklist functionality.
+
+Note: This implementation does not implement the `MarketingInfo` or `DownloadLogo` queries since these are [not used on Terra](https://lcd.terra.dev/wasm/contracts/terra14z56l0fp2lsf86zy3hty2z47ezkhnthtr9yq76/store?query_msg=%7B%22MarketingInfo%22%3A%20%7B%7D%7D).
 
 ## Functionality
 
