@@ -344,7 +344,7 @@ mod tests {
 
         #[test]
         fn basic() {
-            let mut deps = mock_dependencies(&[]);
+            let mut deps = mock_dependencies();
             let amount = Uint128::new(11223344);
             do_instantiate(deps.as_mut());
 
@@ -376,7 +376,7 @@ mod tests {
 
         #[test]
         fn blocked() {
-            let mut deps = mock_dependencies(&[]);
+            let mut deps = mock_dependencies();
             let amount = Uint128::from(11223344u128);
             do_instantiate(deps.as_mut());
 
@@ -438,7 +438,7 @@ mod tests {
 
         #[test]
         fn destroy_blocked_funds() {
-            let mut deps = mock_dependencies(&[]);
+            let mut deps = mock_dependencies();
             let amount = Uint128::from(11223344u128);
             do_instantiate(deps.as_mut());
 
@@ -492,7 +492,7 @@ mod tests {
 
         #[test]
         fn queries_work() {
-            let mut deps = mock_dependencies(&[]);
+            let mut deps = mock_dependencies();
             let env = mock_env();
             do_instantiate(deps.as_mut());
             let data = query(
