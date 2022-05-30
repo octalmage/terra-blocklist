@@ -437,6 +437,46 @@ mod tests {
         }
 
         #[test]
+        fn ensure_uppercase_address_can_not_evade() {
+            let mut deps = mock_dependencies();
+            let amount = Uint128::new(11223344);
+            do_instantiate(deps.as_mut());
+
+            // Mint to uppercased address ADDR0000 from creator.
+            let msg = ExecuteMsg::Mint {
+                recipient: "ADDR0000".into(),
+                amount: amount,
+            };
+            let info = mock_info("creator", &[]);
+            let env = mock_env();
+
+            let res = execute(deps.as_mut(), env, info, msg).unwrap();
+            assert_eq!(0, res.messages.len());
+
+            // Block lowercase addr0000 from creator.
+            let msg = ExecuteMsg::AddToBlockedList {
+                address: "addr0000".into(),
+            };
+            let info = mock_info("creator", &[]);
+            let env = mock_env();
+
+            let res = execute(deps.as_mut(), env, info, msg).unwrap();
+            assert_eq!(0, res.messages.len());
+
+            // Attempt a transfer from uppercased address ADDR0000 to addr0001.
+            let msg = ExecuteMsg::Transfer {
+                recipient: "addr0001".into(),
+                amount: Uint128::from(1000000u128),
+            };
+            let info = mock_info("ADDR0000", &[]);
+            let env = mock_env();
+
+            // Ensure transfer was blocked.
+            let err = execute(deps.as_mut(), env, info, msg.clone()).unwrap_err();
+            assert_eq!(err, ContractError::Blocked {});
+        }
+
+        #[test]
         fn destroy_blocked_funds() {
             let mut deps = mock_dependencies();
             let amount = Uint128::from(11223344u128);
